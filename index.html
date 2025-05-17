@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>McNemar Test Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .table-container {
+            display: grid;
+            grid-template-columns: auto auto auto;
+            margin-bottom: 20px;
+        }
+        .cell {
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header {
+            font-weight: bold;
+        }
+        .input-cell input {
+            width: 100px;
+            height: 40px;
+            text-align: center;
+            font-size: 16px;
+            border: 2px solid #00269e;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        .explanation {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>McNemar Test Calculator</h1>
+        
+        <div class="explanation">
+            <p>The McNemar test is used to determine if there are differences on a dichotomous trait between two related groups (matched pairs). This test is particularly useful for before-after studies or matched case-control studies.</p>
+            <p>Enter the values in the 2×2 contingency table below:</p>
+            <ul>
+                <li><strong>Cell a (Positive-Positive):</strong> Number of subjects who tested positive in both conditions</li>
+                <li><strong>Cell b (Positive-Negative):</strong> Number of subjects who tested positive in condition 1 but negative in condition 2</li>
+                <li><strong>Cell c (Negative-Positive):</strong> Number of subjects who tested negative in condition 1 but positive in condition 2</li>
+                <li><strong>Cell d (Negative-Negative):</strong> Number of subjects who tested negative in both conditions</li>
+            </ul>
+        </div>
+
+        <div class="table-container">
+            <div class="cell"></div>
+            <div class="cell header">Positive</div>
+            <div class="cell header">Negative</div>
+            
+            <div class="cell header">Positive</div>
+            <div class="cell input-cell">
+                <input type="number" id="cell-a" placeholder="Cell a" min="0">
+            </div>
+            <div class="cell input-cell">
+                <input type="number" id="cell-b" placeholder="Cell b" min="0">
+            </div>
+            
+            <div class="cell header">Negative</div>
+            <div class="cell input-cell">
+                <input type="number" id="cell-c" placeholder="Cell c" min="0">
+            </div>
+            <div class="cell input-cell">
+                <input type="number" id="cell-d" placeholder="Cell d" min="0">
+            </div>
+        </div>
+        
+        <button id="calculate">Calculate</button>
+        
+        <div id="results">
+            <h3>Results:</h3>
+            <p><strong>McNemar's Test Statistic (χ²):</strong> <span id="test-statistic"></span></p>
+            <p><strong>Degrees of Freedom:</strong> 1</p>
+            <p><strong>P-value:</strong> <span id="p-value"></span></p>
+            <h4>Difference in Proportions:</h4>
+            <p><strong>Estimated Difference:</strong> <span id="diff-prop"></span></p>
+            <p><strong>95% Confidence Interval:</strong> [<span id="ci-lower"></span>, <span id="ci-upper"></span>]</p>
+        </div>
+        
+    </div>
+
+    <!-- Include JStat library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.5/jstat.min.js"></script>
+    <script>
+        document.getElementById('calculate').addEventListener('click', function() {
+            // Get values from inputs
+            const cellA = parseInt(document.getElementById('cell-a').value) || 0;
+            const cellB = parseInt(document.getElementById('cell-b').value) || 0;
+            const cellC = parseInt(document.getElementById('cell-c').value) || 0;
+            const cellD = parseInt(document.getElementById('cell-d').value) || 0;
+            
+            // Calculate McNemar's test statistic
+            if (cellB + cellC === 0) {
+                alert("The sum of discordant pairs (cells b + c) is zero. McNemar's test cannot be calculated.");
+                return;
+            }
+            
+            const testStatistic = Math.pow(cellB - cellC, 2) / (cellB + cellC);
+            
+            // Calculate p-value using JStat library
+            const pValue = 1 - jStat.chisquare.cdf(testStatistic, 1);
+            
+            // Calculate difference in proportions (prop1 - prop2) 
+            // prop1 = (a + b) / (a + b + c + d)
+            // prop2 = (a + c) / (a + b + c + d)
+            // difference = (b - c) / (a + b + c + d)
+            const totalCount = cellA + cellB + cellC + cellD;
+            const prop1 = (cellA + cellB) / totalCount;
+            const prop2 = (cellA + cellC) / totalCount;
+            const diffProp = prop1 - prop2;
+            
+            // Calculate standard error for the difference
+            const seOfDiff = Math.sqrt((cellB + cellC - Math.pow(cellB - cellC, 2) / totalCount) / Math.pow(totalCount, 2));
+            
+            // Calculate 95% confidence interval for the difference
+            const z = 1.96; // z-score for 95% confidence
+            const lowerCI = diffProp - 1/totalCount - z * seOfDiff;
+            const upperCI = diffProp + 1/totalCount + z * seOfDiff;
+            
+            // Display results
+            document.getElementById('test-statistic').textContent = testStatistic.toFixed(4);
+            document.getElementById('p-value').textContent = pValue.toFixed(4);
+            
+            // Add difference in proportions and CI to results
+            document.getElementById('diff-prop').textContent = diffProp.toFixed(4);
+            document.getElementById('ci-lower').textContent = lowerCI.toFixed(4);
+            document.getElementById('ci-upper').textContent = upperCI.toFixed(4);
+            
+            // Show results
+            document.getElementById('results').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
