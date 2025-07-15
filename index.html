@@ -83,6 +83,23 @@
             border-radius: 5px;
             background-color: #f9f9f9;
         }
+
+        /* Highlighted: New styles for messages */
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .warning-message {
+            color: orange;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        /* End Highlighted */
     </style>
 </head>
 
@@ -134,6 +151,7 @@
 
         <button id="calculate">Calculate</button>
 
+        <div id="message-container"></div>
         <div id="results">
             <h3>Results:</h3>
             <h4>Estimated Proportions:</h4>
@@ -150,21 +168,63 @@
 
     </div>
 
-    <!-- Include JStat library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.5/jstat.min.js"></script>
     <script>
         document.getElementById('calculate').addEventListener('click', function () {
-            // Get values from inputs
-            const cellA = parseInt(document.getElementById('cell-a').value) || 0;
-            const cellB = parseInt(document.getElementById('cell-b').value) || 0;
-            const cellC = parseInt(document.getElementById('cell-c').value) || 0;
-            const cellD = parseInt(document.getElementById('cell-d').value) || 0;
+            // Highlighted: Get string values for validation
+            const cellA_val = document.getElementById('cell-a').value;
+            const cellB_val = document.getElementById('cell-b').value;
+            const cellC_val = document.getElementById('cell-c').value;
+            const cellD_val = document.getElementById('cell-d').value;
 
-            // Calculate McNemar's test statistic
-            if (cellB + cellC === 0) {
-                alert("The sum of discordant pairs (cells b + c) is zero. McNemar's test cannot be calculated.");
-                return;
+            // Highlighted: Get message container and clear previous messages/results
+            const messageContainer = document.getElementById('message-container');
+            messageContainer.innerHTML = ''; // Clear previous messages
+            document.getElementById('results').style.display = 'none'; // Hide results until valid input
+            // End Highlighted
+
+            const cells = {
+                a: cellA_val,
+                b: cellB_val,
+                c: cellC_val,
+                d: cellD_val
+            };
+
+            let parsedCells = {};
+
+            // Highlighted: Logic checks for integer and non-negative values
+            for (const key in cells) {
+                const value = parseFloat(cells[key]);
+                if (isNaN(value) || value % 1 !== 0) {
+                    messageContainer.innerHTML = '<div class="error-message">All cells must be whole numbers</div>';
+                    return; // Halt
+                }
+                if (value < 0) {
+                    messageContainer.innerHTML = '<div class="error-message">Negative cell counts are not permitted</div>';
+                    return; // Halt
+                }
+                parsedCells[key] = value;
             }
+            // End Highlighted
+
+            const cellA = parsedCells.a;
+            const cellB = parsedCells.b;
+            const cellC = parsedCells.c;
+            const cellD = parsedCells.d;
+
+            // Highlighted: Logic check for cells b and c summing to one or more
+            if (cellB + cellC === 0) {
+                messageContainer.innerHTML = '<div class="error-message">Cells b and c can not both be zero</div>';
+                return; // Halt
+            }
+            // End Highlighted
+
+            // Highlighted: Logic check for cells b and c summing to 5 or more (warning)
+            if (cellB + cellC < 5) {
+                messageContainer.innerHTML = '<div class="warning-message">Cells b and c should add to 5 or more - this test might not be reliable</div>';
+                // Do not halt, continue running
+            }
+            // End Highlighted
 
             const testStatistic = Math.pow(cellB - cellC, 2) / (cellB + cellC);
 
@@ -176,6 +236,15 @@
             // prop2 = (a + c) / (a + b + c + d)
             // difference = (b - c) / (a + b + c + d)
             const totalCount = cellA + cellB + cellC + cellD;
+
+            // Highlighted: Added check for totalCount being zero to prevent division by zero for proportions
+            if (totalCount === 0) {
+                // This scenario should mostly be caught by the B+C check, but acts as a safeguard
+                messageContainer.innerHTML = '<div class="error-message">Total sample size cannot be zero.</div>';
+                return;
+            }
+            // End Highlighted
+
             const prop1 = (cellA + cellB) / totalCount;
             const prop2 = (cellA + cellC) / totalCount;
             const diffProp = prop1 - prop2;
@@ -185,8 +254,8 @@
 
             // Calculate 95% confidence interval for the difference
             const z = 1.96; // z-score for 95% confidence
-            const lowerCI = diffProp - 1 / totalCount - z * seOfDiff;
-            const upperCI = diffProp + 1 / totalCount + z * seOfDiff;
+            const lowerCI = diffProp - 1 / totalCount - z * seOfDiff; // With continuity correction
+            const upperCI = diffProp + 1 / totalCount + z * seOfDiff; // With continuity correction
 
             // Display results
             document.getElementById('test-statistic').textContent = testStatistic.toFixed(4);
