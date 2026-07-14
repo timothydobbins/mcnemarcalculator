@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -50,6 +49,19 @@
             font-size: 16px;
             border: 2px solid #00269e;
             border-radius: 5px;
+        }
+
+        .difference-order {
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .difference-order label {
+            margin-right: 18px;
+            white-space: nowrap;
         }
 
         button {
@@ -149,6 +161,18 @@
             </div>
         </div>
 
+        <div class="difference-order">
+            <strong>Calculate the difference as:</strong><br>
+            <label>
+                <input type="radio" name="difference-order" value="occasion1-minus-occasion2" checked>
+                Occasion 1 - Occasion 2
+            </label>
+            <label>
+                <input type="radio" name="difference-order" value="occasion2-minus-occasion1">
+                Occasion 2 - Occasion 1
+            </label>
+        </div>
+
         <button id="calculate">Calculate</button>
 
         <div id="message-container"></div>
@@ -158,7 +182,9 @@
             <p><strong>Proportion positive at Occasion 1:</strong> <span id="prop1"></span></p>
             <p><strong>Proportion positive at Occasion 2:</strong> <span id="prop2"></span></p>
             <h4>Difference in Proportions:</h4>
-            <p><strong>Difference (Occasion 1 - Occasion 2):</strong> <span id="diff-prop"></span></p>
+            <p><strong>Difference (<span id="difference-label">Occasion 1 - Occasion 2</span>):</strong>
+                <span id="diff-prop"></span>
+            </p>
             <p><strong>95% Confidence Interval:</strong> [<span id="ci-lower"></span>, <span id="ci-upper"></span>]</p>
             <h4>McNemar's test:</h4>
             <p><strong>Test statistic (χ²):</strong> <span id="test-statistic"></span></p>
@@ -176,6 +202,7 @@
             const cellB_val = document.getElementById('cell-b').value;
             const cellC_val = document.getElementById('cell-c').value;
             const cellD_val = document.getElementById('cell-d').value;
+            const differenceOrder = document.querySelector('input[name="difference-order"]:checked').value;
 
             // Highlighted: Get message container and clear previous messages/results
             const messageContainer = document.getElementById('message-container');
@@ -231,7 +258,7 @@
             // Calculate p-value using JStat library
             const pValue = 1 - jStat.chisquare.cdf(testStatistic, 1);
 
-            // Calculate difference in proportions (prop1 - prop2) 
+            // Calculate difference in proportions (prop1 - prop2)
             // prop1 = (a + b) / (a + b + c + d)
             // prop2 = (a + c) / (a + b + c + d)
             // difference = (b - c) / (a + b + c + d)
@@ -247,7 +274,17 @@
 
             const prop1 = (cellA + cellB) / totalCount;
             const prop2 = (cellA + cellC) / totalCount;
-            const diffProp = prop1 - prop2;
+
+            let diffProp;
+            let differenceLabel;
+
+            if (differenceOrder === 'occasion2-minus-occasion1') {
+                diffProp = prop2 - prop1;
+                differenceLabel = 'Occasion 2 - Occasion 1';
+            } else {
+                diffProp = prop1 - prop2;
+                differenceLabel = 'Occasion 1 - Occasion 2';
+            }
 
             // Calculate standard error for the difference
             const seOfDiff = Math.sqrt((cellB + cellC - Math.pow(cellB - cellC, 2) / totalCount) / Math.pow(totalCount, 2));
@@ -266,6 +303,7 @@
             document.getElementById('prop2').textContent = prop2.toFixed(4);
 
             // Add difference in proportions and CI to results
+            document.getElementById('difference-label').textContent = differenceLabel;
             document.getElementById('diff-prop').textContent = diffProp.toFixed(4);
             document.getElementById('ci-lower').textContent = lowerCI.toFixed(4);
             document.getElementById('ci-upper').textContent = upperCI.toFixed(4);
